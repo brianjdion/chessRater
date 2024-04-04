@@ -4,8 +4,8 @@ def main():
     with open('club_games_data.csv', 'r') as f:
         counter= 0 
         columns = ""
-        pgn = 24
-        values =1
+        pgn = "1."
+        values ="-A"
         new_file= []
         curr = ""
         for line in f:
@@ -15,15 +15,15 @@ def main():
             # if counter ==70 : 
             #     break
             s = line.strip()
-            if counter== values:
+            if line.startswith(values):
                 #print(f"c {counter}: Values: {s} \n")
-                values+=25
+                #values+=25
                 #new_file.append(line.strip())
                 curr = line.strip()
-            if counter == pgn:
+            if line.startswith(pgn):
                 #print("**************PGN notation**************")
                # print(f"c {counter}: PGN : {s} \n")
-                pgn+=25
+                #pgn+=25
                 # print("check " + new_file[-1]+""+line)
                 # print("after")
                 toAdd=  curr+""+line

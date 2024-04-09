@@ -19,7 +19,7 @@ def extract_moves(pgn_data):
 
     # Filter out unwanted text and split into individual moves
     moves = moves_line.split(' ')
-    moves = [move for move in moves if move and not move.startswith('{') and '.' not in move]
+    moves = [move for move in moves if '.' not in move and '{' not in move and '}' not in move]
 
     # Pair white and black moves
     paired_moves = [[moves[i], moves[i+1]] for i in range(0, len(moves) - 1, 2)]

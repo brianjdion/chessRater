@@ -1,44 +1,37 @@
-def main():
-    # Your main code goes here
-    #print("Hello, world!")
-    with open('club_games_data.csv', 'r') as f:
-        counter= 0 
-        columns = ""
-        pgn = "1."
-        values ="-A"
-        new_file= []
-        curr = ""
-        for line in f:
-            if counter == 0: 
-                columns = line
-                #continue
-            # if counter ==70 : 
-            #     break
-            s = line.strip()
-            if line.startswith(values):
-                #print(f"c {counter}: Values: {s} \n")
-                #values+=25
-                #new_file.append(line.strip())
-                curr = line.strip()
-            if line.startswith(pgn):
-                #print("**************PGN notation**************")
-               # print(f"c {counter}: PGN : {s} \n")
-                #pgn+=25
-                # print("check " + new_file[-1]+""+line)
-                # print("after")
-                toAdd=  curr+""+line
-               # print(toAdd)
-                #print("check " + curr+""+line)
-                #print("after")
-                #new_file.append(new_file[-1]+line)
-                new_file.append(toAdd)
+import pandas as pd
 
-            counter+=1
-    with open('dataset.txt','w') as w:
-        w.write(columns)
-        for line in new_file:
-            w.write(line)
+file_path = 'club_games_data 2.csv'  # Replace with the actual file path
+data = pd.read_csv(file_path)
 
+# Filter the data for 'blitz' time_class and 'chess' rules only
+filtered_data = data[(data['time_class'] == 'blitz') & (data['rules'] == 'chess')]
 
-if __name__ == "__main__":
-    main()
+# Function to extract moves from PGN and organize them into pairs of white and black moves
+def extract_moves(pgn_data):
+    lines = pgn_data.split('\n')
+
+    # Find the line containing the moves
+    moves_line = ''
+    for line in lines:
+        if line.startswith('1. '):
+            moves_line = line
+            break
+
+    # Filter out unwanted text and split into individual moves
+    moves = moves_line.split(' ')
+    moves = [move for move in moves if '.' not in move and '{' not in move and '}' not in move]
+
+    # Pair white and black moves
+    paired_moves = [[moves[i], moves[i+1]] for i in range(0, len(moves) - 1, 2)]
+    
+    return paired_moves
+
+# Extract moves and add them to the DataFrame
+filtered_data['moves'] = filtered_data['pgn'].apply(extract_moves)
+
+# Select the required columns
+columns_to_include = ['white_rating', 'black_rating', 'white_result', 'black_result', 'moves']
+final_data = filtered_data[columns_to_include]
+
+# Convert to JSON and save to a file, ensuring it is in an array format
+final_data.to_json('filtered_chess_games.json', orient='records')

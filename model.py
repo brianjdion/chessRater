@@ -7,7 +7,7 @@ file_path = 'filtered_chess_games.json'
 data = pd.read_json(file_path)
 
 # Keep only the first 100 games
-data = data.head(100)
+data = data.head(1000)
 
 # Prepare the moves for encoding
 all_moves = [move for game in data['moves'] for pair in game for move in pair]

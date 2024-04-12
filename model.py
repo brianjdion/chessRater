@@ -14,7 +14,7 @@ chess_games = pd.read_json(chess_games_path)
 encoded_moves = pd.read_json(encoded_moves_path, typ='series')
 
 # Combine the data assuming the order is the same and the length of games is equal in both files
-chess_games = chess_games.head(10000)
+chess_games = chess_games.head(100)
 chess_games['encoded_moves'] = encoded_moves.values
 
 ratings = chess_games[['white_rating', 'black_rating']]
@@ -23,7 +23,7 @@ moves = list(chess_games['encoded_moves'])
 Y = chess_games[['white_rating', 'black_rating']]
 
 # Split the data into training and testing sets for both ratings and moves
-X_train_moves, X_test_moves, X_train_ratings, X_test_ratings, Y_train, Y_test = train_test_split(moves, ratings, Y, test_size=0.2, random_state=42)
+X_train_moves, X_test_moves, Y_train, Y_test = train_test_split(moves, Y, test_size=0.2, random_state=42)
 
 # Flatten each sequence of moves
 X_train_moves_flat = [move for seq in X_train_moves for move in seq]
@@ -51,8 +51,8 @@ X_train_moves_tensor = torch.tensor(X_train_moves_padded).float().unsqueeze(-1) 
 X_test_moves_tensor = torch.tensor(X_test_moves_padded).float().unsqueeze(-1)  # Add feature dimension
 
 # Convert ratings into tensor
-X_train_ratings_tensor = torch.tensor(X_train_ratings.values).float()
-X_test_ratings_tensor = torch.tensor(X_test_ratings.values).float()
+# X_train_ratings_tensor = torch.tensor(X_train_ratings.values).float()
+# X_test_ratings_tensor = torch.tensor(X_test_ratings.values).float()
 
 # Convert Y (target ratings) into tensors
 Y_train_tensor = torch.tensor(Y_train.values).float()
@@ -71,20 +71,22 @@ class ChessRatingPredictor(nn.Module):
         self.fc1 = nn.Linear(hidden_dim * 2, output_dim)  # For white rating
         self.fc2 = nn.Linear(hidden_dim * 2, output_dim)  # For black rating
 
-    def forward(self, moves, ratings):
+    def forward(self, moves):#, ratings):
         # LSTM for moves
         lstm_out, _ = self.lstm(moves)
         lstm_out = lstm_out[:, -1, :]
         
         # Fully connected layer for ratings
-        ratings_out = self.fc_ratings(ratings)
+        # ratings_out = self.fc_ratings(ratings)
         
         # Combine outputs from both paths
-        combined = torch.cat((lstm_out, ratings_out), dim=1)
+        # combined = torch.cat((lstm_out, ratings_out), dim=1)
         
         # Final output
-        white_rating = self.fc1(combined)
-        black_rating = self.fc2(combined)
+        # white_rating = self.fc1(combined)
+        # black_rating = self.fc2(combined)
+        white_rating = self.fc1(lstm_out)
+        black_rating = self.fc2(lstm_out)
         return white_rating, black_rating
     
 move_input_dim = 1  # Each move is one-dimensional after encoding
@@ -103,7 +105,7 @@ for epoch in range(epochs):
     optimizer.zero_grad()
     
     # Forward pass: Compute predicted y by passing x to the model
-    white_output, black_output = model(X_train_moves_tensor, X_train_ratings_tensor)
+    white_output, black_output = model(X_train_moves_tensor)#, X_train_ratings_tensor)
     
     # Compute and print loss
     loss_white = criterion(white_output.squeeze(), Y_train_tensor[:, 0])
@@ -119,7 +121,7 @@ for epoch in range(epochs):
 model.eval()
 
 with torch.no_grad():
-    white_output, black_output = model(X_test_moves_tensor, X_test_ratings_tensor)
+    white_output, black_output = model(X_test_moves_tensor)#, X_test_ratings_tensor)
     test_loss_white = criterion(white_output.squeeze(), Y_test_tensor[:, 0])
     test_loss_black = criterion(black_output.squeeze(), Y_test_tensor[:, 1])
     
@@ -144,7 +146,12 @@ with torch.no_grad():
     print(f'Accuracy for black players within ±{elo_range} Elo: {accuracy_black}')
 
 # Save the trained model
-torch.save(model.state_dict(), 'chess_rating_predictor.pth')
+# torch.save(model.state_dict(), 'chess_rating_predictor.pth')
+def save(model, outname):
+    torch.save(model.state_dict(), outname)
+
+modelName = 'chessRater.pth'
+save(model, modelName)
 
 
 

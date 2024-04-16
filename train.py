@@ -1,10 +1,14 @@
 import pandas as pd
-from sklearn.model_selection import train_test_split
-
 import torch
-import torch.nn as nn
 import torch.optim as optim
+from sklearn.model_selection import train_test_split
+from chess_model import ChessRatingPredictor  
+import torch.nn as nn
+from sklearn.preprocessing import StandardScaler
 import numpy as np
+from torch.utils.data import DataLoader, TensorDataset
+import joblib
+
 
 # Load the JSON files
 chess_games_path = 'filtered_chess_games.json'  # File with white_rating, black_rating, etc.
@@ -20,10 +24,12 @@ chess_games['encoded_moves'] = encoded_moves.values
 ratings = chess_games[['white_rating', 'black_rating']]
 moves = list(chess_games['encoded_moves'])
 
-Y = chess_games[['white_rating', 'black_rating']]
+# Normalize ratings
+scaler = StandardScaler()
+ratings_scaled = scaler.fit_transform(ratings)
 
 # Split the data into training and testing sets for both ratings and moves
-X_train_moves, X_test_moves, X_train_ratings, X_test_ratings, Y_train, Y_test = train_test_split(moves, ratings, Y, test_size=0.2, random_state=42)
+X_train_moves, X_test_moves, Y_train, Y_test = train_test_split(moves, ratings_scaled, test_size=0.2, random_state=42)
 
 # Flatten each sequence of moves
 X_train_moves_flat = [move for seq in X_train_moves for move in seq]
@@ -50,76 +56,53 @@ X_test_moves_padded = pad_sequences(X_test_moves, maxlen=max_sequence_len)
 X_train_moves_tensor = torch.tensor(X_train_moves_padded).float().unsqueeze(-1)  # Add feature dimension
 X_test_moves_tensor = torch.tensor(X_test_moves_padded).float().unsqueeze(-1)  # Add feature dimension
 
-# Convert ratings into tensor
-X_train_ratings_tensor = torch.tensor(X_train_ratings.values).float()
-X_test_ratings_tensor = torch.tensor(X_test_ratings.values).float()
+# Convert ratings into tensors
+Y_train_tensor = torch.tensor(Y_train).float()
+Y_test_tensor = torch.tensor(Y_test).float()
 
-# Convert Y (target ratings) into tensors
-Y_train_tensor = torch.tensor(Y_train.values).float()
-Y_test_tensor = torch.tensor(Y_test.values).float()
+# Prepare DataLoader for batch processing
+batch_size = 64
+train_dataset = TensorDataset(X_train_moves_tensor, Y_train_tensor)
+test_dataset = TensorDataset(X_test_moves_tensor, Y_test_tensor)
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-# class ChessRatingPredictor(nn.Module):
-#     def __init__(self, move_input_dim, rating_input_dim, hidden_dim, output_dim):
-#         super(ChessRatingPredictor, self).__init__()
-#         # LSTM for move sequences
-#         self.lstm = nn.LSTM(move_input_dim, hidden_dim, batch_first=True)
-        
-#         # Fully connected layer for ratings
-#         self.fc_ratings = nn.Linear(rating_input_dim, hidden_dim)
-        
-#         # Final fully connected layers for output
-#         self.fc1 = nn.Linear(hidden_dim * 2, output_dim)  # For white rating
-#         self.fc2 = nn.Linear(hidden_dim * 2, output_dim)  # For black rating
+# Initialize the model, loss function, and optimizer
+model = ChessRatingPredictor(move_input_dim=1, hidden_dim=64, output_dim=1)
+criterion = nn.MSELoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-#     def forward(self, moves, ratings):
-#         # LSTM for moves
-#         lstm_out, _ = self.lstm(moves)
-#         lstm_out = lstm_out[:, -1, :]
-        
-#         # Fully connected layer for ratings
-#         ratings_out = self.fc_ratings(ratings)
-        
-#         # Combine outputs from both paths
-#         combined = torch.cat((lstm_out, ratings_out), dim=1)
-        
-#         # Final output
-#         white_rating = self.fc1(combined)
-#         black_rating = self.fc2(combined)
-#         return white_rating, black_rating
-    
-move_input_dim = 1  # Each move is one-dimensional after encoding
-rating_input_dim = 2  # Two ratings: white and black
-hidden_dim = 64
-output_dim = 1  # Predicting one rating at a time, but the model will have two outputs
 
-model = ChessRatingPredictor(move_input_dim, rating_input_dim, hidden_dim, output_dim)
-criterion = nn.MSELoss()  # Mean Squared Error Loss for regression
-optimizer = optim.Adam(model.parameters(), lr=0.001)  # Learning rate can be adjusted
-
-epochs = 50
-
+# Training loop
+epochs = 10
 for epoch in range(epochs):
     model.train()
-    optimizer.zero_grad()
-    
-    # Forward pass: Compute predicted y by passing x to the model
-    white_output, black_output = model(X_train_moves_tensor, X_train_ratings_tensor)
-    
-    # Compute and print loss
-    loss_white = criterion(white_output.squeeze(), Y_train_tensor[:, 0])
-    loss_black = criterion(black_output.squeeze(), Y_train_tensor[:, 1])
-    total_loss = loss_white + loss_black
-    
-    # Zero gradients, perform a backward pass, and update the weights.
-    total_loss.backward()
-    optimizer.step()
-    
-    print(f'Epoch {epoch+1}/{epochs}, Total Loss: {total_loss.item()}')
+    total_loss = 0
+    for moves, ratings in train_loader:
+        optimizer.zero_grad()
+        white_output, black_output = model(moves)
+        loss_white = criterion(white_output, ratings[:, 0])
+        loss_black = criterion(black_output, ratings[:, 1])
+        loss = loss_white + loss_black
+        loss.backward()
+        optimizer.step()
+        total_loss += loss.item()
+    print(f'Epoch {epoch + 1}/{epochs}, Total Loss: {total_loss / len(train_loader)}')
 
+# Evaluation
 model.eval()
+total_loss = 0
+with torch.no_grad():
+    for moves, ratings in test_loader:
+        white_output, black_output = model(moves)
+        loss_white = criterion(white_output, ratings[:, 0])
+        loss_black = criterion(black_output, ratings[:, 1])
+        loss = loss_white + loss_black
+        total_loss += loss.item()
+print(f'Test Loss: {total_loss / len(test_loader)}')
 
 with torch.no_grad():
-    white_output, black_output = model(X_test_moves_tensor, X_test_ratings_tensor)
+    white_output, black_output = model(X_test_moves_tensor)
     test_loss_white = criterion(white_output.squeeze(), Y_test_tensor[:, 0])
     test_loss_black = criterion(black_output.squeeze(), Y_test_tensor[:, 1])
     
@@ -146,7 +129,8 @@ with torch.no_grad():
 # Save the trained model
 torch.save(model.state_dict(), 'chess_rating_predictor.pth')
 
-
+# Save scaler
+joblib.dump(scaler, 'elo_scaler.pkl')
 
 #### TESTING 
 
@@ -157,12 +141,3 @@ torch.save(model.state_dict(), 'chess_rating_predictor.pth')
 #     [2899, 796], [237, 3480], [2399, 52], [3167, 3376], [3621, 3535], [1124, 386], 
 #     [1425, 1214], [337, 2536], [1767, 1649], [323, 3182], [809, 379], [1309, 2536]
 # ]
-
-
-
-
-
-
-
-
-

@@ -39,7 +39,7 @@ X_test_moves_flat = [move for seq in X_test_moves for move in seq]
 max_sequence_len = max(len(seq) for seq in X_train_moves)
 
 def pad_sequences(sequences, maxlen, value=0):
-    # Initialize the padded sequences
+
     padded_sequences = np.full((len(sequences), maxlen), value)
 
     for i, game in enumerate(sequences):
@@ -101,6 +101,7 @@ with torch.no_grad():
         total_loss += loss.item()
 print(f'Test Loss: {total_loss / len(test_loader)}')
 
+
 with torch.no_grad():
     white_output, black_output = model(X_test_moves_tensor)
     test_loss_white = criterion(white_output.squeeze(), Y_test_tensor[:, 0])
@@ -131,13 +132,3 @@ torch.save(model.state_dict(), 'chess_rating_predictor.pth')
 
 # Save scaler
 joblib.dump(scaler, 'elo_scaler.pkl')
-
-#### TESTING 
-
-# move_sequence = [
-#     [3501, 3505], [3445, 3447], [3503, 3395], [3389, 651], [790, 1268], [707, 957], 
-#     [867, 873], [2304, 3426], [3426, 27], [62, 217], [1718, 1103], [1103, 1165], 
-#     [3618, 719], [870, 1321], [65, 3564], [867, 76], [3677, 2799], [995, 3624], 
-#     [2899, 796], [237, 3480], [2399, 52], [3167, 3376], [3621, 3535], [1124, 386], 
-#     [1425, 1214], [337, 2536], [1767, 1649], [323, 3182], [809, 379], [1309, 2536]
-# ]

@@ -14,10 +14,10 @@ model = ChessRatingPredictor(move_input_dim=1, hidden_dim=64, output_dim=1)
 model.load_state_dict(torch.load('chess_rating_predictor.pth'))
 model.eval()
 
-
 scaler = joblib.load('elo_scaler.pkl')
 
 # Move sequence where each pair represents a turn
+# 1547-1399
 move_sequence = [
     [3501, 3505], [3445, 3447], [3503, 3395], [3389, 651], [790, 1268], [707, 957],
     [867, 873], [2304, 3426], [3426, 27], [62, 217], [1718, 1103], [1103, 1165],
@@ -26,14 +26,16 @@ move_sequence = [
     [1425, 1214], [337, 2536], [1767, 1649], [323, 3182], [809, 379], [1309, 2536]
 ]
 
-# move_sequence = [
-#     [3501, 3505],
-#     [867, 3447],
-#     [30, 3397],
-#     [65, 875],
-#     [3392, 3480]
-# ]
+# 1514-1536
+move_sequence = [
+    [3501, 3505],
+    [867, 3447],
+    [30, 3397],
+    [65, 875],
+    [3392, 3480]
+]
 
+# 1544-1452
 # move_sequence = [
 #     [3501, 3505],
 #     [3445, 3447],
@@ -138,7 +140,6 @@ padded_sequence = pad_sequences(flat_move_sequence, max_sequence_len)
 
 # Convert to tensor and add the necessary dimension for features
 input_tensor = torch.tensor(padded_sequence).float().unsqueeze(-1)
-
 
 # Predict with the model
 with torch.no_grad():

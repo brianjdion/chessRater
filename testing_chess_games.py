@@ -10,21 +10,19 @@ def pad_sequences(sequences, maxlen, value=0):
     return padded_sequences
 
 # Load the trained model
-model = ChessRatingPredictor(move_input_dim=1, hidden_dim=64, output_dim=1)
+model = ChessRatingPredictor(move_input_dim=1, hidden_dim=128, output_dim=1)
 model.load_state_dict(torch.load('chess_rating_predictor.pth'))
 model.eval()
 
-scaler = joblib.load('elo_scaler.pkl')
-
 # Move sequence where each pair represents a turn
 # 1547-1399
-move_sequence = [
-    [3501, 3505], [3445, 3447], [3503, 3395], [3389, 651], [790, 1268], [707, 957],
-    [867, 873], [2304, 3426], [3426, 27], [62, 217], [1718, 1103], [1103, 1165],
-    [3618, 719], [870, 1321], [65, 3564], [867, 76], [3677, 2799], [995, 3624],
-    [2899, 796], [237, 3480], [2399, 52], [3167, 3376], [3621, 3535], [1124, 386],
-    [1425, 1214], [337, 2536], [1767, 1649], [323, 3182], [809, 379], [1309, 2536]
-]
+# move_sequence = [
+#     [3501, 3505], [3445, 3447], [3503, 3395], [3389, 651], [790, 1268], [707, 957],
+#     [867, 873], [2304, 3426], [3426, 27], [62, 217], [1718, 1103], [1103, 1165],
+#     [3618, 719], [870, 1321], [65, 3564], [867, 76], [3677, 2799], [995, 3624],
+#     [2899, 796], [237, 3480], [2399, 52], [3167, 3376], [3621, 3535], [1124, 386],
+#     [1425, 1214], [337, 2536], [1767, 1649], [323, 3182], [809, 379], [1309, 2536]
+# ]
 
 # 1514-1536
 move_sequence = [
@@ -144,7 +142,5 @@ input_tensor = torch.tensor(padded_sequence).float().unsqueeze(-1)
 # Predict with the model
 with torch.no_grad():
     predicted_white_elo, predicted_black_elo = model(input_tensor)
-    # Rescale the predicted values
-    predicted_elos = scaler.inverse_transform([[predicted_white_elo.item(), predicted_black_elo.item()]])[0]
-    print(f"Predicted Elo for White: {predicted_elos[0]}")
-    print(f"Predicted Elo for Black: {predicted_elos[1]}")
+    print(f"Predicted Elo for White: {predicted_white_elo.item()}")
+    print(f"Predicted Elo for Black: {predicted_black_elo.item()}")

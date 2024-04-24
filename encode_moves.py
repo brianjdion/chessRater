@@ -50,17 +50,3 @@ with open(output_file, 'w') as f:
 
 
 
-# # Prepare the moves for encoding
-# all_moves = [move for game in data['moves'] for pair in game for move in pair]
-
-# # Initialize and fit the encoder
-# encoder = LabelEncoder()
-# encoder.fit(all_moves)
-
-# def encode_game_moves(game_moves):
-#     # Encode each pair of moves and collect them into a list
-#     encoded_game = [encoder.transform(pair).tolist() for pair in game_moves]
-#     return encoded_game
-
-
-

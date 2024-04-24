@@ -1,10 +1,6 @@
 import pandas as pd
 import torch
-import torch.optim as optim
-from sklearn.model_selection import train_test_split
-from chess_model import ChessELOPredictor, ChessNextMove
-import torch.nn as nn
-from sklearn.preprocessing import StandardScaler
+from chess_model import ChessELOPredictor
 import numpy as np
 from torch.utils.data import DataLoader, TensorDataset
 from encode_moves import load_mappings
@@ -29,7 +25,6 @@ def get_ratings(chess_games):
 
 # Let's flatten moves and make into input/output 
 def flatten_pad_center(chess_games):
-    
     games = chess_games['encoded_moves'].tolist()
     flat = []
     maxlen = 0
@@ -64,29 +59,23 @@ test_loader = DataLoader(test, batch_size=batchSize, shuffle=False)
 
 # Initialize the model, loss function, and optimizer
 mappings = load_mappings()
-model = ChessNextMove(max_moves = len(mappings)+1, hidden_dim= 600)
-#model = ChessRatingPredictor(move_input_dim=1, hidden_dim=128, output_dim=1)
-cost = torch.nn.MSELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+model = ChessELOPredictor('nextmove.pt', len(mappings)+1, 64)
 
-# Training loop
 epochs = 10
+optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+cost = torch.nn.MSELoss()
 for epoch in range(1, epochs+1):
     total_loss = 0
     for batch_idx, (X, Y) in enumerate(train_loader):
-        print(batch_idx + 1)
-        if (batch_idx+1) % 100 == 0:
+        batch_idx += 1
+        if batch_idx % 10 == 0:
             break
+        print(batch_idx)
         optimizer.zero_grad()
         hidden = model.init_hidden(batchSize)
-
-        logits = model.forward(X, hidden)
-#         Assuming logits are output at every sequence step and need reshaping:
-        logits = logits.view(-1, logits.size(-1))  # Flatten output to fit [batch_size * seq_len, num_classes]
-        loss = cost(logits, Y.view(-1))
-
-
-        # loss = cost(logits.reshape(-1, len(mappings)+1), Y.flatten())
+        output = model.forward(X, hidden)
+        loss = cost(output.flatten().float(), Y.flatten().float())
+        #print(output)
         total_loss += loss.item()
         loss.backward()
         # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
@@ -129,67 +118,6 @@ print(f'Accuracy for white players within ±{elo_range} Elo: {accuracy_white}')
 print(f'Accuracy for black players within ±{elo_range} Elo: {accuracy_black}')
 
 
-
-###############################
-
-
-# model = ChessRatingPredictor(move_input_dim=1, hidden_dim=128, output_dim=1)
-# cost = nn.MSELoss()
-# optimizer = optim.Adam(model.parameters(), lr=0.001)
-# epoch = 10
-# for epoch in range(epochs):
-#     model.train()
-#     total_loss = 0
-#     for moves, ratings in train_loader:
-#         optimizer.zero_grad()
-#         white_output, black_output = model(moves)
-
-#         loss_white = cost(white_output, ratings[:, 0])
-#         loss_black = cost(black_output, ratings[:, 1])
-#         loss = loss_white + loss_black
-#         loss.backward()
-#         optimizer.step()
-#         total_loss += loss.item()
-#     print(f'Epoch {epoch + 1}/{epochs}, Total Loss: {total_loss / len(train_loader)}')
-
-# # Evaluation
-# model.eval()
-# total_loss = 0
-# with torch.no_grad():
-#     for moves, ratings in test_loader:
-#         white_output, black_output = model(moves)
-#         loss_white = cost(white_output, ratings[:, 0])
-#         loss_black = cost(black_output, ratings[:, 1])
-#         loss = loss_white + loss_black
-#         total_loss += loss.item()
-# print(f'Test Loss: {total_loss / len(test_loader)}')
-
-# with torch.no_grad():
-#     white_output, black_output = model(X_test_moves_tensor)
-#     test_loss_white = cost(white_output.squeeze(), Y_test_tensor[:, 0])
-#     test_loss_black = cost(black_output.squeeze(), Y_test_tensor[:, 1])
-    
-#     # Calculate the absolute differences
-#     white_loss = torch.abs(white_output.squeeze() - Y_test_tensor[:, 0])
-#     black_loss = torch.abs(black_output.squeeze() - Y_test_tensor[:, 1])
-
-#     # Elo range for accuracy calculation
-#     elo_range = 250
-
-#     # Count predictions within the Elo range
-#     within_range_white = torch.sum(white_loss <= elo_range).item()
-#     within_range_black = torch.sum(black_loss <= elo_range).item()
-
-#     # Calculate the accuracy
-#     total_predictions = Y_test_tensor.size(0)
-#     accuracy_white = within_range_white / total_predictions
-#     accuracy_black = within_range_black / total_predictions
-
-#     print(f'Test Loss White: {test_loss_white.item()}, Test Loss Black: {test_loss_black.item()}')
-#     print(f'Accuracy for white players within ±{elo_range} Elo: {accuracy_white}')
-#     print(f'Accuracy for black players within ±{elo_range} Elo: {accuracy_black}')
-
-
 # Save the trained model
-torch.save(model.state_dict(), 'chess_rating_predictor.pth')
+torch.save(model.state_dict(), 'chess_rating_predictor.pt')
 

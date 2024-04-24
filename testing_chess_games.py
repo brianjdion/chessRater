@@ -1,49 +1,44 @@
 import torch
-from chess_model import ChessRatingPredictor
-import joblib
+from chess_model import ChessELOPredictor, ChessNextMove
+import pandas as pd
+import numpy as np
+from encode_moves import load_mappings
 
-# def pad_sequences(sequences, maxlen, value=0):
-#     # Initialize the padded sequences
-#     padded_sequences = torch.full((1, maxlen), value)
-#     seq_length = min(len(sequences), maxlen)
-#     padded_sequences[0, :seq_length] = torch.tensor(sequences[:seq_length])
-#     return padded_sequences
-
-def pad_sequences(sequences, maxlen, value=0):
-    padded_sequences = torch.full((len(sequences), maxlen), value)
-
-    seq_length = min(len(sequences), maxlen)
-    start_index = maxlen - seq_length  
-    padded_sequences[start_index:start_index + seq_length] = torch.tensor(sequences[:seq_length])
-
-    return padded_sequences
 
 # Load the trained model
-model = ChessRatingPredictor(move_input_dim=1, hidden_dim=128, output_dim=1)
-model.load_state_dict(torch.load('chess_rating_predictor.pth'))
+#pretrained_model_path = 'chess_rating_predictor.pt' 
+#model = ChessELOPredictor(pretrained_fname=pretrained_model_path, max_moves=6000, hidden_dim=600)
+#model = ChessELOPredictor(pretrained_model_path, 6000, 600)
+
+mappings = load_mappings()
+model = ChessELOPredictor('nextmove.pt', len(mappings)+1, 64)
+model.load_state_dict(torch.load('chess_rating_predictor.pt'))
+
+#model = ChessELOPredictor('chess_rating_predictor.pt' , len(mappings)+1, 64)
 model.eval()
+
 
 # Move sequence where each pair represents a turn
 # 1547-1399
-# move_sequence = [
-#     [3501, 3505], [3445, 3447], [3503, 3395], [3389, 651], [790, 1268], [707, 957],
-#     [867, 873], [2304, 3426], [3426, 27], [62, 217], [1718, 1103], [1103, 1165],
-#     [3618, 719], [870, 1321], [65, 3564], [867, 76], [3677, 2799], [995, 3624],
-#     [2899, 796], [237, 3480], [2399, 52], [3167, 3376], [3621, 3535], [1124, 386],
-#     [1425, 1214], [337, 2536], [1767, 1649], [323, 3182], [809, 379], [1309, 2536]
-# ]
+move_sequence_1 = [
+    [3501, 3505], [3445, 3447], [3503, 3395], [3389, 651], [790, 1268], [707, 957],
+    [867, 873], [2304, 3426], [3426, 27], [62, 217], [1718, 1103], [1103, 1165],
+    [3618, 719], [870, 1321], [65, 3564], [867, 76], [3677, 2799], [995, 3624],
+    [2899, 796], [237, 3480], [2399, 52], [3167, 3376], [3621, 3535], [1124, 386],
+    [1425, 1214], [337, 2536], [1767, 1649], [323, 3182], [809, 379], [1309, 2536]
+]
 
 # 1514-1536
-# move_sequence = [
-#     [3501, 3505],
-#     [867, 3447],
-#     [30, 3397],
-#     [65, 875],
-#     [3392, 3480]
-# ]
+move_sequence_2 = [
+    [3501, 3505],
+    [867, 3447],
+    [30, 3397],
+    [65, 875],
+    [3392, 3480]
+]
 
 # 1544-1452
-move_sequence = [
+move_sequence_3 = [
     [3501, 3505],
     [3445, 3447],
     [3503, 3395],
@@ -77,79 +72,25 @@ move_sequence = [
     [2803, 1]
 ]
 
-# move_sequence = [
-#     [3501, 3447],
-#     [3503, 3445],
-#     [3389, 3564],
-#     [3426, 1723],
-#     [867, 1430],
-#     [83, 3582],
-#     [3442, 1375],
-#     [1165, 1500],
-#     [1103, 1497],
-#     [3445, 651],
-#     [1069, 3376],
-#     [85, 1556],
-#     [643, 148],
-#     [107, 875],
-#     [62, 995],
-#     [796, 875],
-#     [1124, 3541],
-#     [2399, 73],
-#     [3167, 3561],
-#     [1209, 1165],
-#     [1363, 2796],
-#     [3187, 3430],
-#     [179, 3558],
-#     [107, 1494],
-#     [3656, 2915],
-#     [128, 1553],
-#     [1488, 3297],
-#     [172, 3447],
-#     [62, 2796],
-#     [2652, 379],
-#     [2179, 3679],
-#     [3337, 3677],
-#     [3295, 1494],
-#     [3297, 1306],
-#     [255, 3621],
-#     [75, 377],
-#     [1614, 386],
-#     [1799, 377],
-#     [1614, 361],
-#     [1818, 1256],
-#     [2781, 1677],
-#     [91, 2799],
-#     [1499, 3230],
-#     [261, 447],
-#     [222, 1723],
-#     [128, 1431],
-#     [2179, 1274],
-#     [2182, 359],
-#     [3300, 1218],
-#     [3677, 376],
-#     [107, 385],
-#     [3680, 395],
-#     [381, 386],
-#     [382, 1268],
-#     [3302, 1]
-# ]
+chess_games_path = 'filtered_chess_games.json'
+chess_games = pd.read_json(chess_games_path)
 
+move_sequence_1 = torch.tensor(move_sequence_1).long().flatten().unsqueeze(0)
+move_sequence_2 = torch.tensor(move_sequence_2).long().flatten().unsqueeze(0)
+move_sequence_3 = torch.tensor(move_sequence_3).long().flatten().unsqueeze(0)
 
-# Flatten the sequence
-flat_move_sequence = [move for turn in move_sequence for move in turn]
+ratings = chess_games[['white_rating', 'black_rating']].values
+mean = np.mean(ratings.flatten())
+sd = np.std(ratings.flatten())
 
-# Assume the maximum sequence length is known (from your training data)
-max_sequence_len = 50  # Adjust this based on your actual training data
+y_hat_1 = model(move_sequence_1, model.init_hidden(1))
+y_hat_1 = mean+(y_hat_1*sd)
+print(y_hat_1)
 
-# Pad the sequence
-padded_sequence = pad_sequences(flat_move_sequence, max_sequence_len)
+y_hat_2 = model(move_sequence_2, model.init_hidden(1))
+y_hat_2 = mean+(y_hat_2*sd)
+print(y_hat_2)
 
-# Convert to tensor and add the necessary dimension for features
-input_tensor = torch.tensor(padded_sequence).float().unsqueeze(-1)
-
-# Predict with the model
-with torch.no_grad():
-    predicted_white_elo, predicted_black_elo = model(input_tensor)
-    print(f"Predicted Elo for White: {predicted_white_elo[0]}")
-    print(f"Predicted Elo for Black: {predicted_black_elo[1]}")
+y_hat_3 = model(move_sequence_3, model.init_hidden(1))
+y_hat_3 = mean+(y_hat_3*sd)
+print(y_hat_3)

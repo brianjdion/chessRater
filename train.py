@@ -59,12 +59,13 @@ test_loader = DataLoader(test, batch_size=batchSize, shuffle=False)
 
 # Initialize the model, loss function, and optimizer
 mappings = load_mappings()
-model = ChessELOPredictor('nextmove.pt', len(mappings)+1, 64)
+model = ChessELOPredictor('nextmove.pt', len(mappings)+1, 600)
 
 epochs = 10
 optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 cost = torch.nn.MSELoss()
 for epoch in range(1, epochs+1):
+    model.train()
     total_loss = 0
     for batch_idx, (X, Y) in enumerate(train_loader):
         batch_idx += 1

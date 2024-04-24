@@ -109,10 +109,10 @@ train_loader = DataLoader(train, batch_size=batchSize, shuffle=True)
 test_loader = DataLoader(test, batch_size=batchSize, shuffle=False)
 
 mappings = load_mappings()
-model = ChessNextMove(len(mappings)+1, 64)
+model = ChessNextMove(len(mappings)+1, 600)
 
 epochs = 5
-optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 cost = torch.nn.CrossEntropyLoss()
 for epoch in range(1, epochs+1):
     total_loss = 0

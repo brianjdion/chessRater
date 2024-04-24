@@ -1,5 +1,8 @@
 import pandas as pd
 
+
+## This file path is not used anymore because it's too big of a csv file to be pushed onto GitHub, however we've already
+## gotten the information we needed from it that's in filered_chess_games.json
 file_path = 'club_games_data 2.csv'  # Replace with the actual file path
 data = pd.read_csv(file_path)
 

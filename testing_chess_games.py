@@ -2,11 +2,20 @@ import torch
 from chess_model import ChessRatingPredictor
 import joblib
 
+# def pad_sequences(sequences, maxlen, value=0):
+#     # Initialize the padded sequences
+#     padded_sequences = torch.full((1, maxlen), value)
+#     seq_length = min(len(sequences), maxlen)
+#     padded_sequences[0, :seq_length] = torch.tensor(sequences[:seq_length])
+#     return padded_sequences
+
 def pad_sequences(sequences, maxlen, value=0):
-    # Initialize the padded sequences
-    padded_sequences = torch.full((1, maxlen), value)
+    padded_sequences = torch.full((len(sequences), maxlen), value)
+
     seq_length = min(len(sequences), maxlen)
-    padded_sequences[0, :seq_length] = torch.tensor(sequences[:seq_length])
+    start_index = maxlen - seq_length  
+    padded_sequences[start_index:start_index + seq_length] = torch.tensor(sequences[:seq_length])
+
     return padded_sequences
 
 # Load the trained model
@@ -25,48 +34,48 @@ model.eval()
 # ]
 
 # 1514-1536
-move_sequence = [
-    [3501, 3505],
-    [867, 3447],
-    [30, 3397],
-    [65, 875],
-    [3392, 3480]
-]
-
-# 1544-1452
 # move_sequence = [
 #     [3501, 3505],
-#     [3445, 3447],
-#     [3503, 3395],
-#     [3389, 1268],
-#     [790, 651],
-#     [707, 3426],
-#     [3426, 1084],
-#     [1211, 76],
-#     [1723, 49],
-#     [1491, 252],
-#     [1764, 1766],
-#     [442, 805],
-#     [870, 1165],
-#     [65, 942],
-#     [1141, 3601],
-#     [353, 2799],
-#     [867, 3681],
-#     [62, 3621],
-#     [26, 52],
-#     [138, 2416],
-#     [73, 2533],
-#     [3058, 3297],
-#     [369, 3340],
-#     [380, 2194],
-#     [713, 2536],
-#     [1105, 2419],
-#     [2804, 3235],
-#     [1128, 2200],
-#     [2781, 3445],
-#     [1000, 99],
-#     [2803, 1]
+#     [867, 3447],
+#     [30, 3397],
+#     [65, 875],
+#     [3392, 3480]
 # ]
+
+# 1544-1452
+move_sequence = [
+    [3501, 3505],
+    [3445, 3447],
+    [3503, 3395],
+    [3389, 1268],
+    [790, 651],
+    [707, 3426],
+    [3426, 1084],
+    [1211, 76],
+    [1723, 49],
+    [1491, 252],
+    [1764, 1766],
+    [442, 805],
+    [870, 1165],
+    [65, 942],
+    [1141, 3601],
+    [353, 2799],
+    [867, 3681],
+    [62, 3621],
+    [26, 52],
+    [138, 2416],
+    [73, 2533],
+    [3058, 3297],
+    [369, 3340],
+    [380, 2194],
+    [713, 2536],
+    [1105, 2419],
+    [2804, 3235],
+    [1128, 2200],
+    [2781, 3445],
+    [1000, 99],
+    [2803, 1]
+]
 
 # move_sequence = [
 #     [3501, 3447],
@@ -142,5 +151,5 @@ input_tensor = torch.tensor(padded_sequence).float().unsqueeze(-1)
 # Predict with the model
 with torch.no_grad():
     predicted_white_elo, predicted_black_elo = model(input_tensor)
-    print(f"Predicted Elo for White: {predicted_white_elo.item()}")
-    print(f"Predicted Elo for Black: {predicted_black_elo.item()}")
+    print(f"Predicted Elo for White: {predicted_white_elo[0]}")
+    print(f"Predicted Elo for Black: {predicted_black_elo[1]}")

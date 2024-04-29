@@ -61,7 +61,7 @@ test_loader = DataLoader(test, batch_size=batchSize, shuffle=False)
 mappings = load_mappings()
 model = ChessELOPredictor('nextmove.pt', len(mappings)+1, 600)
 
-epochs = 10
+epochs = 1
 optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 cost = torch.nn.MSELoss()
 for epoch in range(1, epochs+1):
@@ -89,7 +89,7 @@ model.eval()
 total_loss = 0
 total_correct_white = 0
 total_correct_black = 0
-elo_range = 100  # Set the range for considering accurate predictions
+elo_range = .5 + .0167  # Set the range for considering accurate predictions +-155
 
 for X, Y in test_loader:
     hidden = model.init_hidden(X.size(0))  # Adjust batch size dynamically
@@ -103,6 +103,8 @@ for X, Y in test_loader:
         true_white_elo, true_black_elo = Y[:, 0], Y[:, 1]
 
         # Absolute difference
+        print("true white",true_white_elo," predicted white", predicted_white_elo)
+        print("true black",true_black_elo," predicted black", predicted_black_elo)
         white_diff = torch.abs(predicted_white_elo - true_white_elo)
         black_diff = torch.abs(predicted_black_elo - true_black_elo)
 

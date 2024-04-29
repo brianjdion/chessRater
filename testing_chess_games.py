@@ -49,6 +49,7 @@ sd = np.std(ratings.flatten())
 
 
 y_hat_1 = model(move_sequence_1, model.init_hidden(1))
+print("Y HAT 1" ,y_hat_1)
 y_hat_1 = mean+(y_hat_1*sd)
 print(y_hat_1)
 
